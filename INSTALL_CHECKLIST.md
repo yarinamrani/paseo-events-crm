@@ -147,7 +147,7 @@ Create a new Google Form with these **exact field names** (they must match `Form
 
 **Dropdown values for "מי קיבל/ה את השיחה":**
 ```
-יריב
+ירין
 מארחת
 מנהל אירועים
 ```

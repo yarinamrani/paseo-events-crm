@@ -131,7 +131,7 @@ If `CONFIG.webhookToken` is empty, token checking is disabled.
 ### Owner (column N)
 | Value |
 |-------|
-| יריב |
+| ירין |
 | מארחת |
 | מנהל אירועים |
 
@@ -204,7 +204,7 @@ Create a Google Form with these fields:
 | 4 | סוג אירוע | Dropdown | No | Values: יום הולדת, בר/בת מצווה, חתונה, אירוע חברה, ברית/הברית, שבת חתן, אירוע פרטי, ישיבת צוות, אחר |
 | 5 | כמות אורחים | Short answer | No | Add validation: Number |
 | 6 | הערות | Paragraph | No | |
-| 7 | מי קיבל/ה את השיחה | Dropdown | No | Values: יריב, מארחת, מנהל אירועים |
+| 7 | מי קיבל/ה את השיחה | Dropdown | No | Values: ירין, מארחת, מנהל אירועים |
 
 ### Setup steps:
 

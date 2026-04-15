@@ -37,7 +37,7 @@ function testAddLead_basic() {
     eventType: 'יום הולדת',
     numGuests: 40,
     notes:     'TEST LEAD — delete after testing',
-    owner:     'יריב'
+    owner:     'ירין'
   });
 
   Logger.log('=== testAddLead_basic ===');
