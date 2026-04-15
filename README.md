@@ -132,9 +132,9 @@ For manually entered rows, use this formula in column G:
 =NORMALIZE_PHONE(F2)
 ```
 
-The custom function `NORMALIZE_PHONE()` converts any Israeli phone format to `+972XXXXXXXXX`:
-- `050-1234567` → `+9720501234567`
-- `0501234567` → `+9720501234567`
+The custom function `NORMALIZE_PHONE()` converts any Israeli phone format to `+972XXXXXXXXX` (drops the leading 0):
+- `050-1234567` → `+972501234567`
+- `0501234567` → `+972501234567`
 - `972501234567` → `+972501234567`
 - `+972501234567` → `+972501234567` (no change)
 
