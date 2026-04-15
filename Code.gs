@@ -177,6 +177,10 @@ function setupMasterLeads(ss) {
   setDropdown(sheet, 2, 17, MAX, CONFIG.duplicateStatuses);// Q: Duplicate Status
 
   // ── Date formats ──
+  sheet.getRange(2, 1,  MAX, 1).setNumberFormat('@'); // Lead ID
+  sheet.getRange(2, 5,  MAX, 4).setNumberFormat('@'); // Name, Phone, Normalized Phone, Email
+  sheet.getRange(2, 12, MAX, 3).setNumberFormat('@'); // Notes, Status, Owner
+  sheet.getRange(2, 17, MAX, 4).setNumberFormat('@'); // Duplicate, Original ID, Raw Data, Subject
   sheet.getRange(2, 2,  MAX, 1).setNumberFormat('yyyy-mm-dd hh:mm'); // Created At
   sheet.getRange(2, 3,  MAX, 1).setNumberFormat('yyyy-mm-dd hh:mm'); // Updated At
   sheet.getRange(2, 9,  MAX, 1).setNumberFormat('yyyy-mm-dd');       // Event Date
@@ -514,8 +518,10 @@ function addLead(lead) {
     lead.emailReceivedAt || ''                        // U  Source Email Received At
   ];
 
-  sheet.appendRow(row);
-  var newRow = sheet.getLastRow();
+  var newRow = lastRow + 1;
+  var rowRange = sheet.getRange(newRow, 1, 1, row.length);
+  rowRange.setNumberFormat('@');
+  rowRange.setValues([row]);
 
   // Apply date formats to the new row
   sheet.getRange(newRow, 2).setNumberFormat('yyyy-mm-dd hh:mm');
