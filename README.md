@@ -76,6 +76,23 @@ This system adds a CRM layer on top of the existing Google Sheet that already re
 
 ---
 
+## Optional Webhook Token
+
+The Apps Script web app must be accessible by Make.com, so the deployment is usually set to **Anyone**. For basic protection, you can set a shared token:
+
+1. In `Code.gs`, set `CONFIG.webhookToken` to a private value.
+2. In every Make.com HTTP request body, add:
+
+```json
+{
+  "token": "your-private-token"
+}
+```
+
+If `CONFIG.webhookToken` is empty, token checking is disabled.
+
+---
+
 ## Dropdown Values
 
 ### Source (column D)
@@ -118,7 +135,7 @@ This system adds a CRM layer on top of the existing Google Sheet that already re
 | מארחת |
 | מנהל אירועים |
 
-> To add/change dropdown values, edit the **Settings** tab and re-run `setupCRM()`, or manually update the data validation ranges.
+> To add/change dropdown values, update the `CONFIG` values in `Code.gs` and run `setupCRM()` again, or manually update the data validation ranges. Re-running `setupCRM()` preserves existing rows in `Master Leads` and `Activities`.
 
 ---
 
@@ -135,8 +152,10 @@ For manually entered rows, use this formula in column G:
 The custom function `NORMALIZE_PHONE()` converts any Israeli phone format to `+972XXXXXXXXX` (drops the leading 0):
 - `050-1234567` → `+972501234567`
 - `0501234567` → `+972501234567`
+- `501234567` → `+972501234567`
 - `972501234567` → `+972501234567`
 - `+972501234567` → `+972501234567` (no change)
+- `+972 (0)50-1234567` → `+972501234567`
 
 ### Duplicate Check (column Q)
 
@@ -229,7 +248,8 @@ These already work. **Do not change them** for now.
   "eventType": "",
   "numGuests": "",
   "notes": "{{ad_name}} — {{form_name}}",
-  "rawPayload": "{{_raw}}"
+  "rawPayload": "{{_raw}}",
+  "token": "your-private-token-if-configured-or-omit-this-field"
 }
 ```
 
@@ -259,7 +279,8 @@ Step 2:   HTTP → Make a Request (POST)
             "notes": "{{parsed_notes or ''}}",
             "rawPayload": "{{email_body_text}}",
             "emailSubject": "{{subject}}",
-            "emailReceivedAt": "{{date}}"
+            "emailReceivedAt": "{{date}}",
+            "token": "your-private-token-if-configured-or-omit-this-field"
           }
 ```
 
@@ -273,7 +294,8 @@ Step 2:   HTTP → Make a Request (POST)
   "notes": "ליד מ-Call Event — לטפל ידנית",
   "rawPayload": "{{email_body_text}}",
   "emailSubject": "{{subject}}",
-  "emailReceivedAt": "{{date}}"
+  "emailReceivedAt": "{{date}}",
+  "token": "your-private-token-if-configured-or-omit-this-field"
 }
 ```
 
@@ -302,7 +324,8 @@ Step 2:   HTTP → Make a Request (POST)
             "notes": "{{parsed_notes or ''}}",
             "rawPayload": "{{email_body_text}}",
             "emailSubject": "{{subject}}",
-            "emailReceivedAt": "{{date}}"
+            "emailReceivedAt": "{{date}}",
+            "token": "your-private-token-if-configured-or-omit-this-field"
           }
 ```
 
@@ -396,6 +419,8 @@ Delete the default empty `Code.gs` content. Then:
 - Click the ▶ Run button.
 - Authorize when prompted (review permissions → allow).
 - Wait for the "CRM setup complete" popup.
+
+`setupCRM()` is safe to run again after installation: it reapplies headers, formatting, dropdowns, and the dashboard while preserving existing lead/activity rows. Still, use a copied spreadsheet for the first test run.
 
 ### 5. Deploy the Web App (for Make.com)
 

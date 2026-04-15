@@ -65,7 +65,7 @@ Check results in **View → Logs** (or Ctrl+Enter in the new editor).
 | 3 | `testAddLead_emptyPhone` | Lead with no phone | `PASS ✓`, status = `unique` |
 | 4 | `testAddLead_emailSource` | Email source with all fields | `PASS ✓`, status = `unique` |
 | 5 | `testDoPost_simulated` | Simulated Make.com POST | `PASS ✓`, status = `ok`, Lead ID present |
-| 6 | `testNormalizePhone` | 10 phone format conversions | `ALL PASS ✓` |
+| 6 | `testNormalizePhone` | Common phone format conversions | `ALL PASS ✓` |
 
 **After tests, verify in the sheet:**
 - [ ] Master Leads has 5 new rows (tests 1–5)
@@ -100,7 +100,8 @@ curl -X POST "YOUR_WEB_APP_URL" \
     "source": "call_event_email",
     "fullName": "CURL TEST — משה",
     "phone": "050-9999999",
-    "notes": "TEST — curl test lead"
+    "notes": "TEST — curl test lead",
+    "token": "your-private-token-if-configured-or-omit-this-field"
   }'
 ```
 
@@ -190,7 +191,8 @@ Use this JSON payload when setting up Make.com **HTTP → Make a Request** modul
   "notes": "Wants private room",
   "rawPayload": "From: notifications@callevent.co.il\nSubject: New lead\n\nName: ישראל ישראלי\nPhone: 054-1112222",
   "emailSubject": "New lead from Call Event",
-  "emailReceivedAt": "2026-04-15 11:30"
+  "emailReceivedAt": "2026-04-15 11:30",
+  "token": "your-private-token-if-configured-or-omit-this-field"
 }
 ```
 
@@ -207,7 +209,8 @@ Use this JSON payload when setting up Make.com **HTTP → Make a Request** modul
   "notes": "Outdoor terrace preferred",
   "rawPayload": "Contact form submission from paseo.co.il",
   "emailSubject": "פנייה חדשה מהאתר",
-  "emailReceivedAt": "2026-04-15 14:00"
+  "emailReceivedAt": "2026-04-15 14:00",
+  "token": "your-private-token-if-configured-or-omit-this-field"
 }
 ```
 
@@ -220,7 +223,8 @@ Use this JSON payload when setting up Make.com **HTTP → Make a Request** modul
   "notes": "ליד מ-Call Event — לטפל ידנית",
   "rawPayload": "The full raw email body goes here...",
   "emailSubject": "Fwd: event inquiry",
-  "emailReceivedAt": "2026-04-15 09:00"
+  "emailReceivedAt": "2026-04-15 09:00",
+  "token": "your-private-token-if-configured-or-omit-this-field"
 }
 ```
 
@@ -248,7 +252,7 @@ Right-click the tab → **Delete** for any of:
 - Settings
 - Dashboard
 
-Then fix the issue in the script and run `setupCRM()` again. It re-creates tabs from scratch (calls `sheet.clear()` on each).
+Then fix the issue in the script and run `setupCRM()` again. It re-creates missing tabs and reapplies headers, formatting, dropdowns, and dashboard formulas. Existing rows in `Master Leads` and `Activities` are preserved on rerun.
 
 ### Undo web app deployment
 **Extensions → Apps Script → Deploy → Manage deployments → Archive** the deployment. This disables the URL immediately.
@@ -265,4 +269,4 @@ Then fix the issue in the script and run `setupCRM()` again. It re-creates tabs 
 6. The spreadsheet is back to its original state. Existing FB/IG tabs and Make.com scenarios were never modified.
 
 ### Important
-`setupCRM()` **never touches existing tabs**. It only creates new ones. Your existing Facebook/Instagram raw data tabs are safe — even if setup fails, they remain unchanged.
+`setupCRM()` does not delete, rename, or modify existing Facebook/Instagram raw tabs. It only manages the CRM tabs listed above. Your existing Facebook/Instagram raw data tabs are safe — even if setup fails, they remain unchanged.

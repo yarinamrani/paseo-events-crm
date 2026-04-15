@@ -133,7 +133,8 @@ function testDoPost_simulated() {
         notes:           'TEST — corporate event',
         rawPayload:      'From: callevent@example.com\nBody: ...',
         emailSubject:    'Lead: אבי ישראלי',
-        emailReceivedAt: '2026-04-15 10:00'
+        emailReceivedAt: '2026-04-15 10:00',
+        token:           CONFIG.webhookToken || ''
       }),
       type: 'application/json'
     }
@@ -161,6 +162,10 @@ function testNormalizePhone() {
     { input: '972501234567',     expected: '+972501234567' },
     { input: '(050) 123-4567',   expected: '+972501234567' },
     { input: '050.123.4567',     expected: '+972501234567' },
+    { input: '+972 (0)50-1234567', expected: '+972501234567' },
+    { input: '501234567',        expected: '+972501234567' },
+    { input: '00972501234567',   expected: '+972501234567' },
+    { input: '9720501234567',    expected: '+972501234567' },
     { input: '',                 expected: '' },
     { input: null,               expected: '' },
     { input: '03-9876543',       expected: '+97239876543' },

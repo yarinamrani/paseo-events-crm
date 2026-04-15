@@ -38,6 +38,7 @@
 
 var CONFIG = {
   masterTab: 'Master Leads',
+  webhookToken: '',
 
   sources: [
     'facebook',
@@ -141,7 +142,10 @@ function setupCRM() {
 
 function setupMasterLeads(ss) {
   var sheet = getOrCreateSheet(ss, CONFIG.masterTab);
-  sheet.clear();
+  var hasLeadData = sheet.getLastRow() > 1;
+  if (!hasLeadData) {
+    sheet.clear();
+  }
 
   // Headers
   var hdr = sheet.getRange(1, 1, 1, MASTER_COLUMNS.length);
@@ -215,6 +219,8 @@ function setupMasterLeads(ss) {
   sheet.setConditionalFormatRules(rules);
 
   // Auto-filter
+  var existingFilter = sheet.getFilter();
+  if (existingFilter) existingFilter.remove();
   sheet.getRange(1, 1, 1, MASTER_COLUMNS.length).createFilter();
 }
 
@@ -222,7 +228,10 @@ function setupMasterLeads(ss) {
 
 function setupActivities(ss) {
   var sheet = getOrCreateSheet(ss, 'Activities');
-  sheet.clear();
+  var hasActivityData = sheet.getLastRow() > 1;
+  if (!hasActivityData) {
+    sheet.clear();
+  }
 
   var hdr = sheet.getRange(1, 1, 1, ACTIVITIES_COLUMNS.length);
   hdr.setValues([ACTIVITIES_COLUMNS]);
@@ -358,11 +367,15 @@ function setupDashboard(ss) {
  */
 function NORMALIZE_PHONE(phone) {
   if (!phone) return '';
-  var p = String(phone).replace(/[\s\-\(\)\.]/g, '');
+  var p = String(phone).trim().replace(/[^\d\+]/g, '');
 
-  if (/^\+972/.test(p)) return p;
+  if (/^00972/.test(p)) p = '+972' + p.substring(5);
+  if (/^\+9720\d{8,9}$/.test(p)) return '+972' + p.substring(5);
+  if (/^\+972\d{8,9}$/.test(p)) return p;
+  if (/^9720\d{8,9}$/.test(p)) return '+972' + p.substring(4);
   if (/^972\d{8,9}$/.test(p)) return '+' + p;
   if (/^0\d{8,9}$/.test(p)) return '+972' + p.substring(1);
+  if (/^5\d{8}$/.test(p)) return '+972' + p;
 
   return p;
 }

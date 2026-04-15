@@ -46,7 +46,8 @@
  *   "owner":            "מנהל אירועים",            // optional
  *   "rawPayload":       "full email body or JSON", // optional
  *   "emailSubject":     "New lead from...",         // optional
- *   "emailReceivedAt":  "2025-05-01 14:30"         // optional
+ *   "emailReceivedAt":  "2025-05-01 14:30",        // optional
+ *   "token":            "shared-secret"            // optional, if CONFIG.webhookToken is set
  * }
  *
  * Returns JSON:
@@ -61,6 +62,9 @@
 function doPost(e) {
   try {
     var body = JSON.parse(e.postData.contents);
+    if (CONFIG.webhookToken && body.token !== CONFIG.webhookToken) {
+      throw new Error('Unauthorized webhook token.');
+    }
 
     var result = addLead({
       source:          body.source           || 'manual',
