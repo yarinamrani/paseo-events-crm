@@ -1,72 +1,47 @@
 /**
- * ═══════════════════════════════════════════════════════════════════════
- *  Paseo Leads CRM — Gmail Email Poller
- * ═══════════════════════════════════════════════════════════════════════
+ * Paseo Leads CRM v2 — סריקת מיילים מ-Gmail
  *
- *  Replaces Make.com for email lead ingestion.
- *  Checks Gmail every 15 minutes for new lead emails and adds them
- *  to Master Leads automatically.
+ * בודק Gmail כל 15 דקות ומוסיף לידים חדשים לטאב לידים.
+ * מייבא רק מיילים מ-20.5.2026 והלאה.
  *
- *  Supported sources:
- *    • Call Event emails    (Gmail label: "CRM - Call Event Leads")
- *    • Paseo website emails (Gmail label: "CRM - Paseo Website Leads")
+ * מקורות:
+ *   • Call Event  (label: "CRM - Call Event Leads")
+ *   • אתר Paseo   (label: "CRM - Paseo Website Leads")
  *
- *  ────────────────────────────────────────────────────────
- *  SETUP (one-time, 2 minutes)
- *  ────────────────────────────────────────────────────────
- *  1. In Gmail, create two labels:
- *       "CRM - Call Event Leads"
- *       "CRM - Paseo Website Leads"
- *
- *  2. In Gmail, create filters to auto-label incoming lead emails:
- *       Settings → Filters → Create filter
- *       From: (the sender of Call Event emails)
- *       Apply label: "CRM - Call Event Leads"
- *       (repeat for Paseo website emails)
- *
- *  3. Paste this file into Apps Script (same project as Code.gs).
- *
- *  4. Run setupEmailPoller() once — it creates a 15-minute timer.
- *     That's it. Emails will flow into Master Leads automatically.
- *
- *  To stop:  run removeEmailPoller()
- *  To test:  run pollEmails() manually
- * ═══════════════════════════════════════════════════════════════════════
+ * התקנה:
+ *   1. צור labels ב-Gmail: "CRM - Call Event Leads", "CRM - Paseo Website Leads"
+ *   2. צור filters ב-Gmail שמוסיפים את ה-label לפי כתובת השולח
+ *   3. הרץ setupEmailPoller() פעם אחת
  */
-
-// ─── Email source configuration ─────────────────────────────────────────────
 
 var EMAIL_SOURCES = [
   {
     label:  'CRM - Call Event Leads',
     source: 'call_event_email',
-    notes:  'ליד מ-Call Event — לטפל ידנית'
+    notes:  'ליד מ-Call Event'
   },
   {
     label:  'CRM - Paseo Website Leads',
     source: 'paseo_website_email',
-    notes:  'ליד מהאתר — לטפל ידנית'
+    notes:  'ליד מאתר Paseo'
   }
 ];
 
-// Processed emails are marked with this label so we don't re-process them
 var PROCESSED_LABEL = 'CRM - Processed';
 
-// ─── Main poller — runs every 15 minutes ────────────────────────────────────
+// ─── סריקה ראשית — רצה כל 15 דקות ──────────────────────────────────────────
 
 function pollEmails() {
   ensureLabel_(PROCESSED_LABEL);
-
   EMAIL_SOURCES.forEach(function(src) {
     processEmailSource_(src);
   });
 }
 
-// ─── Process one email source ───────────────────────────────────────────────
-
 function processEmailSource_(src) {
   var query = 'label:' + src.label.replace(/ /g, '-')
-            + ' -label:' + PROCESSED_LABEL.replace(/ /g, '-');
+            + ' -label:' + PROCESSED_LABEL.replace(/ /g, '-')
+            + ' after:2026/05/20';
 
   var threads = GmailApp.search(query, 0, 20);
   if (threads.length === 0) return;
@@ -76,85 +51,74 @@ function processEmailSource_(src) {
 
   threads.forEach(function(thread) {
     var messages = thread.getMessages();
-    var msg = messages[messages.length - 1]; // latest message in thread
+    var msg = messages[messages.length - 1];
 
     var body = msg.getPlainBody() || msg.getBody() || '';
     var from = msg.getFrom() || '';
     var fromEmail = extractEmail_(from);
+    var subject = msg.getSubject() || '';
+    var receivedAt = formatDate_(msg.getDate());
 
     var result = addLead({
-      source:          src.source,
-      fullName:        '',
-      phone:           '',
-      email:           fromEmail,
-      eventDate:       '',
-      eventType:       '',
-      numGuests:       '',
-      notes:           src.notes,
-      rawPayload:      body.substring(0, 5000), // limit to 5000 chars
-      emailSubject:    msg.getSubject() || '',
-      emailReceivedAt: formatDate_(msg.getDate())
+      source:     src.source,
+      fullName:   '',
+      phone:      '',
+      email:      fromEmail,
+      notes:      src.notes + (subject ? ' | נושא: ' + subject : ''),
+      rawPayload: JSON.stringify({
+        emailSubject: subject,
+        emailReceivedAt: receivedAt,
+        from: from,
+        body: body.substring(0, 5000)
+      })
     });
 
-    // Mark as processed
     thread.addLabel(processedLabel);
-
     count++;
-    Logger.log('Added lead ' + result.leadId + ' from ' + src.source +
-               ' | subject: ' + msg.getSubject());
+    Logger.log('ליד ' + result.leadId + ' מ-' + src.source + ' | ' + subject);
   });
 
   if (count > 0) {
-    Logger.log('Processed ' + count + ' emails from ' + src.label);
+    Logger.log('עובדו ' + count + ' מיילים מ-' + src.label);
   }
 }
 
-// ─── Setup: create the 15-minute timer trigger ─────────────────────────────
+// ─── התקנה ──────────────────────────────────────────────────────────────────
 
 function setupEmailPoller() {
-  // Remove existing triggers first
   removeEmailPoller();
-
-  // Create the "CRM - Processed" label if it doesn't exist
   ensureLabel_(PROCESSED_LABEL);
 
-  // Create a time-driven trigger that runs every 15 minutes
   ScriptApp.newTrigger('pollEmails')
     .timeBased()
     .everyMinutes(15)
     .create();
 
-  Logger.log('Email poller installed — runs every 15 minutes.');
+  Logger.log('סורק מיילים הותקן — רץ כל 15 דקות.');
   SpreadsheetApp.getUi().alert(
-    'Email poller is now active ✓\n\n' +
-    'It will check Gmail every 15 minutes for new lead emails\n' +
-    'in these labels:\n' +
+    'סורק מיילים פעיל ✓\n\n' +
+    'בודק Gmail כל 15 דקות:\n' +
     '• CRM - Call Event Leads\n' +
     '• CRM - Paseo Website Leads\n\n' +
-    'New leads will appear in Master Leads automatically.\n\n' +
-    'To stop: run removeEmailPoller()'
+    'לידים חדשים יופיעו בטאב לידים אוטומטית.\n' +
+    'מייבא רק מ-20.5.2026 והלאה.\n\n' +
+    'לעצירה: הרץ removeEmailPoller()'
   );
 }
 
-// ─── Remove the timer trigger ───────────────────────────────────────────────
-
 function removeEmailPoller() {
-  var triggers = ScriptApp.getProjectTriggers();
-  triggers.forEach(function(trigger) {
+  ScriptApp.getProjectTriggers().forEach(function(trigger) {
     if (trigger.getHandlerFunction() === 'pollEmails') {
       ScriptApp.deleteTrigger(trigger);
     }
   });
-  Logger.log('Email poller removed.');
 }
 
-// ─── Helpers ────────────────────────────────────────────────────────────────
+// ─── עזרים ──────────────────────────────────────────────────────────────────
 
 function ensureLabel_(name) {
   var label = GmailApp.getUserLabelByName(name);
-  if (!label) {
-    label = GmailApp.createLabel(name);
-  }
+  if (!label) label = GmailApp.createLabel(name);
   return label;
 }
 
@@ -167,30 +131,25 @@ function extractEmail_(fromField) {
 
 function formatDate_(date) {
   if (!date) return '';
-  return Utilities.formatDate(date, 'Asia/Jerusalem', 'yyyy-MM-dd HH:mm');
+  return Utilities.formatDate(date, 'Asia/Jerusalem', 'dd/MM/yyyy HH:mm');
 }
 
-// ─── Manual test ────────────────────────────────────────────────────────────
+// ─── בדיקה ידנית ────────────────────────────────────────────────────────────
 
 function testEmailPoller() {
-  Logger.log('=== Testing Email Poller ===');
-  Logger.log('Checking for unprocessed emails...');
-
+  Logger.log('=== בדיקת סורק מיילים ===');
   EMAIL_SOURCES.forEach(function(src) {
     var query = 'label:' + src.label.replace(/ /g, '-')
-              + ' -label:' + PROCESSED_LABEL.replace(/ /g, '-');
+              + ' -label:' + PROCESSED_LABEL.replace(/ /g, '-')
+              + ' after:2026/05/20';
     var threads = GmailApp.search(query, 0, 5);
-    Logger.log(src.label + ': ' + threads.length + ' unprocessed emails found');
-
+    Logger.log(src.label + ': ' + threads.length + ' מיילים לא מעובדים');
     if (threads.length > 0) {
       var msg = threads[0].getMessages()[0];
-      Logger.log('  Example — Subject: ' + msg.getSubject());
-      Logger.log('  Example — From: ' + msg.getFrom());
-      Logger.log('  Example — Date: ' + msg.getDate());
+      Logger.log('  דוגמה — נושא: ' + msg.getSubject());
+      Logger.log('  דוגמה — מאת: ' + msg.getFrom());
     }
   });
-
-  Logger.log('');
-  Logger.log('To process these emails, run pollEmails()');
-  Logger.log('To set up automatic polling every 15 min, run setupEmailPoller()');
+  Logger.log('להפעלה: pollEmails()');
+  Logger.log('להתקנה אוטומטית: setupEmailPoller()');
 }

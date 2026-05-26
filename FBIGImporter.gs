@@ -1,51 +1,36 @@
 /**
- * ═══════════════════════════════════════════════════════════════════════
- *  Paseo Leads CRM — Facebook / Instagram Lead Importer
- * ═══════════════════════════════════════════════════════════════════════
+ * Paseo Leads CRM v2 — ייבוא לידים מפייסבוק ואינסטגרם
  *
- *  Scans the existing FB/IG raw data tabs and copies new leads
- *  into Master Leads. Keeps track of which rows were already imported
- *  so it never creates duplicates.
+ * סורק את הטאבים הקיימים של FB/IG ומעתיק לידים חדשים לטאב לידים.
+ * מייבא רק לידים מ-20.5.2026 והלאה.
  *
- *  ────────────────────────────────────────────────────────
- *  SETUP
- *  ────────────────────────────────────────────────────────
- *  1. Update FB_TAB_NAME and IG_TAB_NAME below to match the exact
- *     names of your existing Facebook and Instagram raw data tabs.
- *
- *  2. Update the COLUMN_MAP for each source to match which column
- *     in the raw tab holds name, phone, email, etc.
- *     (Column numbers are 1-based: A=1, B=2, C=3, ...)
- *
- *  3. Run importFBIGLeads() once to import all existing leads.
- *
- *  4. Run setupFBIGImporter() to auto-import every 15 minutes.
- * ═══════════════════════════════════════════════════════════════════════
+ * ──────────────────────────────────────
+ * הגדרה — עדכן את השמות והעמודות למטה
+ * ──────────────────────────────────────
+ * 1. שנה את FB_TAB_NAME ו-IG_TAB_NAME לשמות הטאבים שלך
+ * 2. שנה את מיפוי העמודות (A=1, B=2, C=3...)
+ * 3. הרץ importFBIGLeads() לייבוא ראשוני
+ * 4. הרץ setupFBIGImporter() לייבוא אוטומטי כל 15 דקות
  */
 
-// ─── Configuration — UPDATE THESE ───────────────────────────────────────────
+// ─── הגדרות — שנה כאן ──────────────────────────────────────────────────────
 
-// The exact tab names in your spreadsheet for the raw FB/IG data.
-// Look at the bottom of your Google Sheet for the tab names.
-var FB_TAB_NAME = 'Facebook Leads';   // ← change this to your actual tab name
-var IG_TAB_NAME = 'Instagram Leads';  // ← change this to your actual tab name
+var FB_TAB_NAME = 'Facebook Leads';   // ← שנה לשם הטאב שלך
+var IG_TAB_NAME = 'Instagram Leads';  // ← שנה לשם הטאב שלך
 
-// Column mapping: which column (1-based) in the raw tab holds each field.
-// Set to 0 or null if the field doesn't exist in that tab.
-// Look at the header row of each raw tab to figure out the mapping.
-//
-// Example: if column A=Timestamp, B=Name, C=Phone, D=Email
-//          then fullName=2, phone=3, email=4
+// מיפוי עמודות: איזו עמודה (מספר) מכילה כל שדה.
+// שים 0 אם השדה לא קיים בטאב הזה.
+// תסתכל על שורת הכותרות בכל טאב.
 
 var FB_COLUMNS = {
-  fullName:  2,   // ← which column has the contact name?
-  phone:     3,   // ← which column has the phone number?
-  email:     4,   // ← which column has the email?
-  eventDate: 0,   // ← 0 means not available
+  fullName:  2,   // ← עמודה עם שם
+  phone:     3,   // ← עמודה עם טלפון
+  email:     4,   // ← עמודה עם אימייל
+  eventDate: 0,
   eventType: 0,
   numGuests: 0,
   notes:     0,
-  timestamp: 1    // ← which column has the submission timestamp?
+  timestamp: 1    // ← עמודה עם תאריך כניסה
 };
 
 var IG_COLUMNS = {
@@ -59,56 +44,54 @@ var IG_COLUMNS = {
   timestamp: 1
 };
 
-// ─── Import function ────────────────────────────────────────────────────────
+// ─── ייבוא ──────────────────────────────────────────────────────────────────
 
 function importFBIGLeads() {
   var fb = importFromRawTab_(FB_TAB_NAME, 'facebook', FB_COLUMNS);
   var ig = importFromRawTab_(IG_TAB_NAME, 'instagram', IG_COLUMNS);
-
   var total = fb + ig;
-  Logger.log('Import complete: ' + fb + ' FB + ' + ig + ' IG = ' + total + ' new leads');
+
+  Logger.log('ייבוא הושלם: ' + fb + ' FB + ' + ig + ' IG = ' + total + ' לידים חדשים');
 
   if (total > 0) {
     SpreadsheetApp.getUi().alert(
-      'Import complete ✓\n\n' +
-      fb + ' leads from Facebook\n' +
-      ig + ' leads from Instagram\n' +
-      total + ' total new leads added to Master Leads'
+      'ייבוא הושלם ✓\n\n' +
+      fb + ' לידים מפייסבוק\n' +
+      ig + ' לידים מאינסטגרם\n' +
+      total + ' סה"כ לידים חדשים'
     );
   } else {
-    SpreadsheetApp.getUi().alert('No new leads to import. All rows already in Master Leads.');
+    SpreadsheetApp.getUi().alert('אין לידים חדשים לייבוא.');
   }
 }
 
 function importFromRawTab_(tabName, source, colMap) {
   var ss = SpreadsheetApp.getActiveSpreadsheet();
   var rawSheet = ss.getSheetByName(tabName);
-
   if (!rawSheet) {
-    Logger.log('Tab "' + tabName + '" not found — skipping');
+    Logger.log('טאב "' + tabName + '" לא נמצא — מדלג');
     return 0;
   }
 
   var masterSheet = ss.getSheetByName(CONFIG.masterTab);
   if (!masterSheet) {
-    Logger.log('Master Leads tab not found');
+    Logger.log('טאב לידים לא נמצא');
     return 0;
   }
 
   var rawData = rawSheet.getDataRange().getValues();
-  if (rawData.length <= 1) return 0; // only header or empty
+  if (rawData.length <= 1) return 0;
 
-  // Get existing normalized phones in Master Leads for dedup
+  // טלפונים קיימים לבדיקת כפילויות — עמודה Q
   var masterLastRow = masterSheet.getLastRow();
   var existingPhones = {};
   if (masterLastRow > 1) {
-    var phones = masterSheet.getRange('G2:G' + masterLastRow).getValues();
+    var phones = masterSheet.getRange('Q2:Q' + masterLastRow).getValues();
     phones.forEach(function(row) {
       if (row[0]) existingPhones[String(row[0])] = true;
     });
   }
 
-  // Track which raw rows we already imported (by row content hash)
   var importedKey = 'imported_' + source;
   var props = PropertiesService.getScriptProperties();
   var importedRows = {};
@@ -117,18 +100,30 @@ function importFromRawTab_(tabName, source, colMap) {
     if (stored) importedRows = JSON.parse(stored);
   } catch(e) {}
 
+  var cutoff = CONFIG.cutoffDate;
   var count = 0;
 
-  for (var i = 1; i < rawData.length; i++) { // skip header row
+  for (var i = 1; i < rawData.length; i++) {
     var row = rawData[i];
-    var rowKey = String(i) + '_' + String(row[0]); // row index + first column as key
+    var rowKey = String(i) + '_' + String(row[0]);
 
-    if (importedRows[rowKey]) continue; // already imported
+    if (importedRows[rowKey]) continue;
+
+    // בדיקת תאריך — רק מ-20.5.2026
+    if (colMap.timestamp) {
+      var ts = row[colMap.timestamp - 1];
+      if (ts) {
+        var rowDate = new Date(ts);
+        if (!isNaN(rowDate.getTime()) && rowDate < cutoff) {
+          importedRows[rowKey] = 'before_cutoff';
+          continue;
+        }
+      }
+    }
 
     var phone = colMap.phone ? String(row[colMap.phone - 1] || '') : '';
     var normalizedPhone = NORMALIZE_PHONE(phone);
 
-    // Skip if this phone already exists in Master Leads (dedup)
     if (normalizedPhone && existingPhones[normalizedPhone]) {
       importedRows[rowKey] = 'dup';
       continue;
@@ -140,9 +135,7 @@ function importFromRawTab_(tabName, source, colMap) {
     var eventType = colMap.eventType ? String(row[colMap.eventType - 1] || '') : '';
     var numGuests = colMap.numGuests ? String(row[colMap.numGuests - 1] || '') : '';
     var notes     = colMap.notes     ? String(row[colMap.notes - 1]     || '') : '';
-    var timestamp = colMap.timestamp ? String(row[colMap.timestamp - 1] || '') : '';
 
-    // Skip rows that look empty (no name AND no phone)
     if (!fullName && !phone && !email) {
       importedRows[rowKey] = 'empty';
       continue;
@@ -156,7 +149,7 @@ function importFromRawTab_(tabName, source, colMap) {
       eventDate:  eventDate,
       eventType:  eventType,
       numGuests:  numGuests,
-      notes:      notes || ('ליד מ-' + source),
+      notes:      notes || ('ליד מ-' + mapSource_(source)),
       rawPayload: JSON.stringify(row)
     });
 
@@ -165,27 +158,26 @@ function importFromRawTab_(tabName, source, colMap) {
     count++;
   }
 
-  // Save progress
   props.setProperty(importedKey, JSON.stringify(importedRows));
   return count;
 }
 
-// ─── Auto-import every 15 minutes ───────────────────────────────────────────
+// ─── ייבוא אוטומטי כל 15 דקות ──────────────────────────────────────────────
 
 function setupFBIGImporter() {
   removeFBIGImporter();
-
   ScriptApp.newTrigger('importFBIGLeads')
     .timeBased()
     .everyMinutes(15)
     .create();
 
-  Logger.log('FB/IG importer installed — runs every 15 minutes.');
+  Logger.log('מייבא FB/IG הותקן — רץ כל 15 דקות.');
   SpreadsheetApp.getUi().alert(
-    'FB/IG importer is now active ✓\n\n' +
-    'It will check the raw Facebook and Instagram tabs every 15 minutes\n' +
-    'and import new leads into Master Leads.\n\n' +
-    'To stop: run removeFBIGImporter()'
+    'מייבא FB/IG פעיל ✓\n\n' +
+    'בודק את טאבי פייסבוק ואינסטגרם כל 15 דקות\n' +
+    'ומייבא לידים חדשים לטאב לידים.\n' +
+    'מייבא רק מ-20.5.2026 והלאה.\n\n' +
+    'לעצירה: הרץ removeFBIGImporter()'
   );
 }
 
@@ -197,12 +189,12 @@ function removeFBIGImporter() {
   });
 }
 
-// ─── Reset import tracking (use if you need to re-import everything) ────────
+// ─── איפוס מעקב (לייבוא מחדש) ──────────────────────────────────────────────
 
 function resetFBIGImportTracking() {
   var props = PropertiesService.getScriptProperties();
   props.deleteProperty('imported_facebook');
   props.deleteProperty('imported_instagram');
-  Logger.log('Import tracking reset. Next run will re-import all rows.');
-  SpreadsheetApp.getUi().alert('Import tracking reset.\nRun importFBIGLeads() to re-import all leads.');
+  Logger.log('מעקב ייבוא אופס. ההרצה הבאה תייבא הכל מחדש.');
+  SpreadsheetApp.getUi().alert('מעקב ייבוא אופס.\nהרץ importFBIGLeads() לייבוא מחדש.');
 }
